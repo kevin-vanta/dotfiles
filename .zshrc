@@ -5,7 +5,7 @@ alias gst="git status"
 
 alias hg="history | grep"
 
-export ZSH="$(HOME)/.oh-my-zsh"
+export ZSH="$HOME/.oh-my-zsh"
 plugins=(
     git 
     zsh-autosuggestions 
