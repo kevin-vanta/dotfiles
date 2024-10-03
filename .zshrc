@@ -1,8 +1,3 @@
-alias gc="git commit -m"
-alias ga="git add"
-alias gpo="git push origin"
-alias gst="git status"
-
 alias hg="history | grep"
 
 export ZSH="$HOME/.oh-my-zsh"
@@ -15,3 +10,8 @@ plugins=(
 )
 ZSH_THEME="robbyrussell"
 source $ZSH/oh-my-zsh.sh
+
+alias gc="git commit -m"
+alias ga="git add"
+alias gpo="git push origin"
+alias gst="git status"
