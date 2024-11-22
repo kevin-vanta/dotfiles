@@ -13,5 +13,7 @@ source $ZSH/oh-my-zsh.sh
 
 alias gc="git commit -m"
 alias ga="git add"
-alias gpo="git push origin"
+alias gpo="git push origin HEAD"
+alias gcm="git checkout main"
 alias gst="git status"
+alias gco="git checkout"
