@@ -18,3 +18,6 @@ alias gcm="git checkout main"
 alias gst="git status"
 alias gco="git checkout"
 alias gcb="git checkout -b"
+
+alias tmux-claude="tmux new-session -s claude"
+alias tma="tmux -a"
