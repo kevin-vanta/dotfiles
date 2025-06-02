@@ -19,6 +19,13 @@ create_symlinks() {
 echo "Creating symlinks..."
 create_symlinks
 
+echo "Installing tmux..."
+if ! command -v tmux &> /dev/null; then
+    sudo apt-get update && sudo apt-get install -y tmux
+else
+    echo "tmux is already installed"
+fi
+
 echo "Installing Zsh..."
 sudo apt-get update && sudo apt-get install -y zsh
 
@@ -30,6 +37,9 @@ git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-m
 git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 git clone https://github.com/zdharma-continuum/fast-syntax-highlighting ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/fsh
 git clone --depth 1 -- https://github.com/marlonrichert/zsh-autocomplete.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/zsh-autocomplete
+
+echo "Installing Tmux Plugin Manager..."
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 echo "Setting Zsh as default shell..."
 chsh -s $(which zsh)
