@@ -22,4 +22,4 @@ alias gcb="git checkout -b"
 alias tmux-claude="tmux new-session -s claude"
 alias tma="tmux -a"
 
-alias cc-basic='claude --allowedTools "Bash(*)" "Git(*)" "Read" "Edit" "Write"'
+alias cc='claude --allowedTools "Bash(*)" "Git(*)" "Read" "Edit" "Write"'
