@@ -33,21 +33,11 @@ else
     echo "Python3 is already installed"
 fi
 
-echo "Installing uv package manager..."
-if ! command -v uv &> /dev/null; then
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    source $HOME/.cargo/env
-else
-    echo "uv is already installed"
-fi
-
 echo "Installing SuperClaude Framework..."
-# Ensure uv is in PATH for the current session
-if [ -f "$HOME/.cargo/env" ]; then
-    source $HOME/.cargo/env
-fi
+# Install SuperClaude using pip
+pip3 install SuperClaude
 
-uv add SuperClaude
+# Run the SuperClaude installer
 python3 -m SuperClaude install --quick
 
 echo "SuperClaude Framework installed successfully!"
