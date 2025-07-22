@@ -56,7 +56,11 @@ echo "Installing Zsh..."
 sudo apt-get update && sudo apt-get install -y zsh
 
 echo "Installing Oh My Zsh..."
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+else
+    echo "Oh My Zsh is already installed"
+fi
 
 echo "Installing Zsh plugins..."
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
@@ -68,4 +72,11 @@ echo "Installing Tmux Plugin Manager..."
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 echo "Setting Zsh as default shell..."
-chsh -s $(which zsh)
+# Check if we're in a container/codespace environment
+if [ -f /.dockerenv ] || [ -n "$CODESPACES" ]; then
+    echo "Running in container/codespace - updating shell in /etc/passwd"
+    sudo usermod -s $(which zsh) $(whoami)
+else
+    echo "Running on regular system - using chsh"
+    chsh -s $(which zsh)
+fi
