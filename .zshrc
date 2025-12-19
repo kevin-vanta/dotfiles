@@ -26,7 +26,4 @@ alias gstpop="git stash pop"
 
 alias squash="!f() { git fetc origin main && git reset --soft origin/main && git commit -m \"$1\"; }; f"
 
-alias tmux-claude="tmux new-session -s claude"
-alias tma="tmux -a"
-
 alias cc='claude --allowedTools "Bash(*)" "Git(*)" "Read" "Edit" "Write"'
