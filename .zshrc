@@ -24,6 +24,6 @@ alias gstp="git stash push -m"
 alias gstl="git stash list"
 alias gstpop="git stash pop"
 
-alias squash="!f() { git fetc origin main && git reset --soft origin/main && git commit -m \"$1\"; }; f"
+alias squash="git fetch origin main && git reset --soft origin/main && git commit -m";
 
 alias cc='claude --allowedTools "Bash(*)" "Git(*)" "Read" "Edit" "Write"'
