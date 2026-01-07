@@ -18,6 +18,7 @@ alias gcm="git checkout main"
 alias gst="git status"
 alias gco="git checkout"
 alias gcb="git checkout -b"
+alias gcl='lumen draft | git commit -F -'
 
 # Git stash aliases
 alias gstp="git stash push -m"
