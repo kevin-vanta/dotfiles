@@ -61,6 +61,9 @@ git clone --depth 1 -- https://github.com/marlonrichert/zsh-autocomplete.git ${Z
 echo "Installing Tmux Plugin Manager..."
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
+echo "Installing lumen..."
+./install-lumen.sh --provider claude --model claude-haiku-4-5-20251001
+
 echo "Setting Zsh as default shell..."
 # Check if we're in a container/codespace environment
 if [ -f /.dockerenv ] || [ -n "$CODESPACES" ]; then
