@@ -55,14 +55,15 @@ fi
 echo "Installing Zsh plugins..."
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
-git clone https://github.com/zdharma-continuum/fast-syntax-highlighting ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting
-git clone --depth 1 -- https://github.com/marlonrichert/zsh-autocomplete.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autocomplete
+
+echo "Installing Catppuccin zsh-syntax-highlighting theme..."
+git clone https://github.com/catppuccin/zsh-syntax-highlighting.git /tmp/catppuccin-zsh
+mkdir -p ~/.zsh
+cp /tmp/catppuccin-zsh/themes/catppuccin_mocha-zsh-syntax-highlighting.zsh ~/.zsh/
+rm -rf /tmp/catppuccin-zsh
 
 echo "Installing Tmux Plugin Manager..."
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-
-echo "Installing lumen..."
-./install-lumen.sh --provider claude --model claude-haiku-4-5-20251001
 
 echo "Setting Zsh as default shell..."
 # Check if we're in a container/codespace environment
