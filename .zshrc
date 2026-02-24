@@ -30,6 +30,8 @@ alias squash="git fetch origin main && git reset --soft origin/main && git commi
 
 alias cc='claude --allowedTools "Bash(*)" "Git(*)" "Read" "Edit" "Write"'
 
+export GITHUB_USER="kevin-vanta"
+
 # Start claude code in a new tmux session
 tcc() {
   local session_name="claude-$(openssl rand -hex 3)"
