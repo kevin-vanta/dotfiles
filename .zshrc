@@ -1,5 +1,8 @@
 alias hg="history | grep"
 
+# Ona secrets (added to zshrc since Ona only sources in bashrc by default)
+[ -f /etc/profile.d/ona-secrets.sh ] && . /etc/profile.d/ona-secrets.sh
+
 export ZSH="$HOME/.oh-my-zsh"
 plugins=(
     git
@@ -28,9 +31,7 @@ alias gstpop="git stash pop"
 
 alias squash="git fetch origin main && git reset --soft origin/main && git commit -m";
 
-alias cc='claude --allowedTools "Bash(*)" "Git(*)" "Read" "Edit" "Write"'
-
-export GITHUB_USER="kevin-vanta"
+alias web="NON_LOCAL_IMPERSONATION_ENABLED=true just dev-start-web"
 
 # Start claude code in a new tmux session
 tcc() {
