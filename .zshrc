@@ -41,6 +41,8 @@ tcc() {
   tmux attach-session -t "$session_name"
 }
 
+export GITHUB_USER="kevin-vanta"
+
 # Attach to an existing claude tmux session
 tca() {
   local sessions=(${(f)"$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^claude-')"})
@@ -68,3 +70,4 @@ tca() {
     done
   fi
 }
+export PATH="$HOME/bin:$PATH"
