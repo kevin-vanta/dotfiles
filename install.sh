@@ -78,7 +78,7 @@ fi
 echo "Setting up Claude Code settings symlinks..."
 # Symlink .claude/settings.local.json so permission approvals persist across environments
 if [ -d /workspaces/obsidian/.claude ]; then
-    ln -sf ~/.claude/obsidian-settings-local.json /workspaces/obsidian/.claude/settings.local.json
+    ln -sf ~/.claude/settings.json /workspaces/obsidian/.claude/settings.local.json
     echo "Symlinked obsidian settings.local.json"
 else
     echo "Obsidian repo not found at /workspaces/obsidian — skipping Claude settings symlink"
