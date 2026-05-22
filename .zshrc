@@ -71,3 +71,4 @@ tca() {
   fi
 }
 export PATH="$HOME/bin:$PATH"
+export CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=true
