@@ -31,6 +31,11 @@ alias gstpop="git stash pop"
 
 alias squash="git fetch origin main && git reset --soft origin/main && git commit -m";
 
+# Create a herdr worktree branched off the latest origin/main
+herdr-new() {
+  git fetch origin main && herdr worktree create --branch "$1" --base origin/main
+}
+
 alias web="NON_LOCAL_IMPERSONATION_ENABLED=true just dev-start-web"
 
 # Start claude code in a new tmux session
