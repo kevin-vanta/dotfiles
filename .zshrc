@@ -36,6 +36,57 @@ herdr-new() {
   git fetch origin main && herdr worktree create --branch "$1" --base origin/main
 }
 
+herdr-rm() {
+  if (( $# != 1 )); then
+    print -u2 -r -- "Usage: herdr-rm <branch-name>"
+    return 2
+  fi
+
+  local branch="$1"
+  local worktrees
+  local matches
+  local match_count
+  local workspace_id
+  local worktree_path
+  local reply
+
+  worktrees=$(herdr worktree list) || return
+  matches=$(jq -c --arg branch "$branch" \
+    '[.result.worktrees[] | select(.branch == $branch and .is_linked_worktree == true)]' \
+    <<< "$worktrees") || return
+  match_count=$(jq 'length' <<< "$matches") || return
+
+  if (( match_count == 0 )); then
+    print -u2 -r -- "No linked herdr worktree found for branch: $branch"
+    return 1
+  fi
+
+  if (( match_count > 1 )); then
+    print -u2 -r -- "Multiple linked herdr worktrees found for branch: $branch"
+    jq -r '.[] | "  \(.open_workspace_id // "-")  \(.path)"' <<< "$matches" >&2
+    return 1
+  fi
+
+  workspace_id=$(jq -r '.[0].open_workspace_id // empty' <<< "$matches") || return
+  worktree_path=$(jq -r '.[0].path' <<< "$matches") || return
+
+  if [[ -z "$workspace_id" ]]; then
+    print -u2 -r -- "The worktree for branch $branch has no workspace ID and cannot be removed with herdr."
+    return 1
+  fi
+
+  read -r "reply?Remove $branch ($workspace_id) at $worktree_path? [y/N] "
+  case "$reply" in
+    y|Y|yes|YES|Yes)
+      herdr worktree remove --workspace "$workspace_id"
+      ;;
+    *)
+      print -r -- "Cancelled."
+      return 1
+      ;;
+  esac
+}
+
 alias web="NON_LOCAL_IMPERSONATION_ENABLED=true just dev-start-web"
 
 # Start claude code in a new tmux session
