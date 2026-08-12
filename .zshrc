@@ -88,7 +88,7 @@ herdr-rm() {
 }
 
 codex() {
-  local git_dir common_dir
+  local git_dir common_dir filesystem_override
 
   if ! git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null); then
     command codex "$@"
@@ -96,7 +96,13 @@ codex() {
   fi
 
   common_dir=$(git rev-parse --path-format=absolute --git-common-dir) || return
-  command codex --add-dir "$common_dir" --add-dir "$git_dir" "$@"
+  if [[ "$git_dir" == "$common_dir" ]]; then
+    filesystem_override="{\"$git_dir\"=\"write\"}"
+  else
+    filesystem_override="{\"$common_dir\"=\"write\",\"$git_dir\"=\"write\"}"
+  fi
+
+  command codex -c "permissions.repo-git.filesystem=$filesystem_override" "$@"
 }
 
 alias web="NON_LOCAL_IMPERSONATION_ENABLED=true just dev-start-web"
