@@ -87,6 +87,18 @@ herdr-rm() {
   esac
 }
 
+codex() {
+  local git_dir common_dir
+
+  if ! git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null); then
+    command codex "$@"
+    return
+  fi
+
+  common_dir=$(git rev-parse --path-format=absolute --git-common-dir) || return
+  command codex --add-dir "$common_dir" --add-dir "$git_dir" "$@"
+}
+
 alias web="NON_LOCAL_IMPERSONATION_ENABLED=true just dev-start-web"
 
 # Start claude code in a new tmux session
