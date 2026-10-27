@@ -1,5 +1,9 @@
 #!/bin/bash
 
+script_dir=$(dirname "$(readlink -f "$0")")
+install -d "$HOME/bin"
+install -m 755 "$script_dir/bin/codex" "$HOME/bin/codex"
+
 create_symlinks() {
     # Get the directory in which this script lives.
     script_dir=$(dirname "$(readlink -f "$0")")
