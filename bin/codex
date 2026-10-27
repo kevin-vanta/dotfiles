@@ -1,0 +1,225 @@
+#!/bin/sh
+
+set -eu
+
+codex_binary=/usr/local/share/nvm/current/bin/codex
+
+worktree_name=main
+filesystem_override=
+
+if git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null); then
+  common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+  repo_root=$(git rev-parse --show-toplevel)
+  agents_dir="$repo_root/.agents"
+
+  if [ "$git_dir" = "$common_dir" ]; then
+    worktree_name=main
+    filesystem_override="{\"$git_dir\"=\"write\",\"$agents_dir\"=\"write\"}"
+  else
+    worktree_name=$(basename "$git_dir")
+    filesystem_override="{\"$common_dir\"=\"write\",\"$git_dir\"=\"write\",\"$agents_dir\"=\"write\"}"
+  fi
+
+fi
+
+codex_cache_root="/tmp/codex-cache-$worktree_name"
+PREK_HOME="$codex_cache_root/prek"
+npm_config_cache="$codex_cache_root/npm"
+GOCACHE="$codex_cache_root/go-build"
+UV_CACHE_DIR="$codex_cache_root/uv"
+YARN_CACHE_FOLDER="$codex_cache_root/yarn"
+export PREK_HOME npm_config_cache GOCACHE UV_CACHE_DIR YARN_CACHE_FOLDER
+
+# ~/.codex lives on NFS (EFS-backed home). Codex's sqlite state uses WAL
+# mode, whose locking is unreliable over NFS and corrupts under concurrent
+# multi-worktree access. Give each worktree its own CODEX_HOME on local
+# disk (/workspaces); config/auth stay canonical in ~/.codex and are
+# synced in/out around each invocation so login and settings stay shared.
+# /workspaces carries a default POSIX ACL, so every file created under it
+# inherits one. NFSv4 (~/.codex) cannot accept a POSIX ACL, so `cp -a` on the
+# way back dies with "preserving permissions: Operation not supported"; fall
+# back to copying content, timestamps and plain mode bits.
+sync_item() {
+  src=$1
+  dest=$2
+  [ -e "$src" ] || return 0
+  if [ -d "$src" ]; then
+    mkdir -p "$dest"
+    cp -a "$src/." "$dest/" 2>/dev/null ||
+      cp -R --preserve=timestamps --no-preserve=mode "$src/." "$dest/"
+  else
+    cp -a "$src" "$dest" 2>/dev/null || {
+      cp --preserve=timestamps --no-preserve=mode "$src" "$dest"
+      chmod --reference="$src" "$dest"
+    }
+  fi
+}
+
+merge_hook_state() {
+  src=$1
+  dest=$2
+  [ -s "$src" ] || return 0
+  [ -s "$dest" ] || return 0
+
+  merged=$(mktemp "$dest.merge.XXXXXX")
+  if ! awk '
+    function flush_source_block() {
+      if (capturing_source_block) {
+        source_headers[++source_count] = source_header
+        source_blocks[source_header] = source_block
+      }
+      capturing_source_block = 0
+      source_header = ""
+      source_block = ""
+    }
+
+    FNR == 1 {
+      file_number++
+      if (file_number == 2) {
+        flush_source_block()
+      }
+    }
+
+    file_number == 1 {
+      if ($0 ~ /^[[:space:]]*\[/) {
+        flush_source_block()
+        if ($0 ~ /^[[:space:]]*\[hooks[.]state[.]"/) {
+          capturing_source_block = 1
+          source_header = $0
+          source_block = $0 ORS
+        }
+      } else if (capturing_source_block) {
+        source_block = source_block $0 ORS
+      }
+      next
+    }
+
+    {
+      if ($0 ~ /^[[:space:]]*\[hooks[.]state[.]"/) {
+        destination_headers[$0] = 1
+      }
+      print
+    }
+
+    END {
+      for (i = 1; i <= source_count; i++) {
+        header = source_headers[i]
+        if (!(header in destination_headers)) {
+          printf "\n%s", source_blocks[header]
+        }
+      }
+    }
+  ' "$src" "$dest" >"$merged"; then
+    rm -f "$merged"
+    return 1
+  fi
+
+  chmod --reference="$dest" "$merged"
+  mv "$merged" "$dest"
+}
+
+warn() {
+  echo "codex: warning: $1" >&2
+}
+
+# 2026-09-02: codex rewrote config.toml down to a stub holding only [otel],
+# and because this script syncs the file both ways the stub became canonical
+# and then overwrote every other worktree's copy. These keys are only ever
+# hand-written, never emitted by codex, so a file missing them has lost the
+# settings rather than merely changed them.
+config_looks_intact() {
+  file=$1
+  [ -s "$file" ] || return 1
+  for key in model approval_policy default_permissions; do
+    grep -Eq "^[[:space:]]*$key[[:space:]]*=" "$file" || return 1
+  done
+  return 0
+}
+
+quarantine_config() {
+  src=$1
+  dest="$src.stripped-$(date -u +%Y%m%dT%H%M%SZ)"
+  cp "$src" "$dest" 2>/dev/null && echo "$dest"
+}
+
+# Auth is refreshed by whichever worktree runs codex, so take the newer copy
+# rather than letting a stale canonical file clobber a fresh `codex login`.
+sync_auth_newer() {
+  canonical=$1
+  local_copy=$2
+  if [ -e "$local_copy" ] && { [ ! -e "$canonical" ] || [ "$local_copy" -nt "$canonical" ]; }; then
+    sync_item "$local_copy" "$canonical" || warn "failed to sync auth.json to $canonical"
+  else
+    sync_item "$canonical" "$local_copy"
+  fi
+}
+
+sync_config_to_worktree() {
+  (
+    flock -x 9
+    if config_looks_intact "$canonical_home/config.toml" ||
+       ! config_looks_intact "$codex_home/config.toml"; then
+      if config_looks_intact "$canonical_home/config.toml" &&
+         config_looks_intact "$codex_home/config.toml"; then
+        merge_hook_state "$codex_home/config.toml" "$canonical_home/config.toml"
+      fi
+      sync_item "$canonical_home/config.toml" "$codex_home/config.toml"
+    else
+      warn "$canonical_home/config.toml looks stripped; keeping the intact copy in $codex_home"
+    fi
+  ) 9>"$canonical_home/config.toml.lock"
+}
+
+sync_hook_state_to_canonical() {
+  (
+    flock -x 9
+    if ! config_looks_intact "$codex_home/config.toml"; then
+      saved=$(quarantine_config "$codex_home/config.toml" || true)
+      warn "codex left a stripped config.toml in $codex_home; kept $canonical_home/config.toml${saved:+ (rewrite saved to $saved)}"
+    elif config_looks_intact "$canonical_home/config.toml"; then
+      merge_hook_state "$codex_home/config.toml" "$canonical_home/config.toml" ||
+        warn "failed to merge hook trust into $canonical_home/config.toml"
+    else
+      warn "$canonical_home/config.toml looks stripped; refusing to update it from $codex_home"
+    fi
+  ) 9>"$canonical_home/config.toml.lock"
+}
+
+canonical_home="$HOME/.codex"
+codex_home="/workspaces/.codex-homes/$worktree_name"
+
+if [ ! -d "$codex_home" ]; then
+  mkdir -p "$codex_home"
+  for item in AGENTS.md hooks.json installation_id version.json \
+              herdr-agent-state.sh .personality_migration .sandbox_migration \
+              plugins skills rules; do
+    sync_item "$canonical_home/$item" "$codex_home/$item"
+  done
+fi
+
+sync_config_to_worktree
+
+sync_auth_newer "$canonical_home/auth.json" "$codex_home/auth.json"
+export CODEX_HOME="$codex_home"
+
+if [ -n "$filesystem_override" ]; then
+  set -- \
+    -c 'default_permissions="repo-git"' \
+    -c 'check_for_update_on_startup=false' \
+    -c "permissions.repo-git.filesystem=$filesystem_override" \
+    -c "shell_environment_policy.set={PREK_HOME=\"$PREK_HOME\",npm_config_cache=\"$npm_config_cache\",GOCACHE=\"$GOCACHE\",UV_CACHE_DIR=\"$UV_CACHE_DIR\",YARN_CACHE_FOLDER=\"$YARN_CACHE_FOLDER\"}" \
+    "$@"
+else
+  set -- \
+    --config 'features.fast_mode=true' \
+    --config 'service_tier="fast"' \
+    "$@"
+fi
+
+status=0
+"$codex_binary" "$@" || status=$?
+
+sync_auth_newer "$canonical_home/auth.json" "$codex_home/auth.json"
+sync_hook_state_to_canonical
+
+exit "$status"
